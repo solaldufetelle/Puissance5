@@ -2,7 +2,7 @@ import streamlit as st
 import math
 import copy
 
-st.set_page_config(page_title="Puissance 5 - Assistant IA", page_icon="🔴", layout="centered")
+st.set_page_config(page_title="Puissance 5 - Mode Expert", page_icon="🔴", layout="centered")
 
 LIGNES = 7
 COLONNES = 9
@@ -19,7 +19,6 @@ def coup_valide(grille, col):
     return grille[0][col] == VIDE
 
 def obtenir_coups_valides(grille):
-    """Retourne les coups en priorisant le centre pour booster l'intelligence et l'efficacité."""
     centre = COLONNES // 2
     colonnes_triees = sorted(range(COLONNES), key=lambda x: abs(x - centre))
     return [c for c in colonnes_triees if coup_valide(grille, c)]
@@ -62,14 +61,14 @@ def evaluer_fenetre(fenetre, jeton):
     elif nb_jeton == 3 and nb_vide == 2: score += 50
     elif nb_jeton == 2 and nb_vide == 3: score += 10
 
-    if nb_adversaire == 4 and nb_vide == 1: score -= 90000  # Grosse priorité pour bloquer l'adversaire
+    if nb_adversaire == 4 and nb_vide == 1: score -= 90000
     elif nb_adversaire == 3 and nb_vide == 2: score -= 200
     return score
 
 def evaluer_grille(grille, jeton):
     score = 0
     centre_colonne = [grille[r][COLONNES // 2] for r in range(LIGNES)]
-    score += centre_colonne.count(jeton) * 15  # Valorise encore plus le contrôle du centre
+    score += centre_colonne.count(jeton) * 15
 
     for r in range(LIGNES):
         for c in range(COLONNES - PUISSANCE + 1):
@@ -126,54 +125,54 @@ def minimax(grille, profondeur, alpha, beta, joueur_max):
         return meilleure_col, valeur
 
 def trouver_meilleur_coup(grille, profondeur=5):
-    """Profondeur augmentée à 5 pour une anticipation redoutable."""
     col, _ = minimax(grille, profondeur, -math.inf, math.inf, True)
     return col
 
 # --- INTERFACE UTILISATEUR STREAMLIT ---
 
-st.title("🎯 Puissance 5 - Mode Expert")
+st.title("🎯 Puissance 5 - Expert")
+st.markdown("Cliquez directement sur une case vide de la colonne de votre choix pour jouer.")
 
 if 'grille' not in st.session_state:
     st.session_state.grille = creer_grille()
 if 'partie_gagnee' not in st.session_state:
     st.session_state.partie_gagnee = False
 
-symboles = {0: "⚪", 1: "🔴", 2: "🟡"}
-
-cols_ui = st.columns(COLONNES)
-for c in range(COLONNES):
-    with cols_ui[c]:
-        if st.button(f"⬇️ {c+1}", key=f"btn_{c}", disabled=st.session_state.partie_gagnee, use_container_width=True):
-            if coup_valide(st.session_state.grille, c):
-                jouer_coup(st.session_state.grille, c, JOUEUR)
-                if verifier_victoire(st.session_state.grille, JOUEUR):
-                    st.session_state.partie_gagnee = True
-                else:
-                    with st.spinner("L'IA analyse le jeu..."):
-                        # Profondeur 5 avec optimisation du centre
-                        col_ia = trouver_meilleur_coup(st.session_state.grille, profondeur=5)
-                        if col_ia is not None:
-                            jouer_coup(st.session_state.grille, col_ia, IA)
-                            if verifier_victoire(st.session_state.grille, IA):
-                                st.session_state.partie_gagnee = True
-                st.rerun()
-
-st.write("")
-
+# Affichage de la grille interactive ligne par ligne
 for r in range(LIGNES):
-    ligne_str = "".join([symboles[st.session_state.grille[r][c]] for c in range(COLONNES)])
-    st.markdown(f"<div style='text-align: center; font-size: 32px; letter-spacing: 6px; line-height: 1.4;'>{ligne_str}</div>", unsafe_allow_html=True)
+    cols = st.columns(COLONNES)
+    for c in range(COLONNES):
+        with cols[c]:
+            val = st.session_state.grille[r][c]
+            if val == VIDE and not st.session_state.partie_gagnee:
+                # Bouton interactif pour chaque case vide de la colonne
+                if st.button("⚪", key=f"cell_{r}_{c}", use_container_width=True):
+                    if coup_valide(st.session_state.grille, c):
+                        jouer_coup(st.session_state.grille, c, JOUEUR)
+                        if verifier_victoire(st.session_state.grille, JOUEUR):
+                            st.session_state.partie_gagnee = True
+                        else:
+                            with st.spinner("L'IA réfléchit..."):
+                                col_ia = trouver_meilleur_coup(st.session_state.grille, profondeur=5)
+                                if col_ia is not None:
+                                    jouer_coup(st.session_state.grille, col_ia, IA)
+                                    if verifier_victoire(st.session_state.grille, IA):
+                                        st.session_state.partie_gagnee = True
+                        st.rerun()
+            else:
+                # Affichage des jetons déjà posés (Rouge ou Jaune) ou des cases vides si la partie est finie
+                symbole = "⚪" if val == VIDE else ("🔴" if val == 1 else "🟡")
+                st.markdown(f"<div style='text-align: center; font-size: 26px; padding: 2px;'>{symbole}</div>", unsafe_allow_html=True)
 
 if st.session_state.partie_gagnee:
     if verifier_victoire(st.session_state.grille, JOUEUR):
-        st.success("🎉 Incroyable, vous avez battu l'IA Experte !")
+        st.success("🎉 Incroyable, vous avez gagné !")
     elif verifier_victoire(st.session_state.grille, IA):
-        st.error("💀 L'IA a gagné ! Elle ne pardonne plus.")
+        st.error("💀 L'IA a gagné !")
 
 st.write("")
 if st.button("🔄 Nouvelle Partie", use_container_width=True):
     st.session_state.grille = creer_grille()
     st.session_state.partie_gagnee = False
     st.rerun()
-    
+                                        
