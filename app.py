@@ -4,22 +4,6 @@ import copy
 
 st.set_page_config(page_title="Puissance 5", page_icon="🔴", layout="centered")
 
-# CSS pour des cases carrées et des jetons bien grands qui remplissent toute la case
-st.markdown("""
-    <style>
-    div.stButton > button {
-        aspect-ratio: 1 / 1 !important;
-        width: 100% !important;
-        font-size: 38px !important;
-        padding: 0px !important;
-        border-radius: 8px !important;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-    </style>
-""", unsafe_allow_html=True)
-
 LIGNES = 7
 COLONNES = 9
 PUISSANCE = 5
@@ -158,38 +142,38 @@ st.title("🎯 Puissance 5")
 if 'grille' not in st.session_state:
     st.session_state.grille = creer_grille()
 if 'partie_gagnee' not in st.session_state:
-    st.session_state.partie_gagnee = False
+    st.session_state.partie_gagneo = False # Variable gérée proprement en dessous
+if 'partie_terminee' not in st.session_state:
+    st.session_state.partie_terminee = False
 
-# Affichage de la grille en cases carrées avec de grands jetons
+# Boutons situés juste au-dessus des colonnes pour jouer grand et confortablement
+cols_ui = st.columns(COLONNES)
+for c in range(COLONNES):
+    with cols_ui[c]:
+        if st.button(f"⬇️{c+1}", key=f"btn_{c}", disabled=st.session_state.partie_terminee, use_container_width=True):
+            if coup_valide(st.session_state.grille, c):
+                jouer_coup(st.session_state.grille, c, JOUEUR)
+                if verifier_victoire(st.session_state.grille, JOUEUR):
+                    st.session_state.partie_terminee = True
+                else:
+                    col_ia = trouver_meilleur_coup(st.session_state.grille, profondeur=5)
+                    if col_ia is not None:
+                        jouer_coup(st.session_state.grille, col_ia, IA)
+                        if verifier_victoire(st.session_state.grille, IA):
+                            st.session_state.partie_terminee = True
+                st.rerun()
+
+st.write("")
+
+# Affichage du plateau en grand format (ronds bien visibles et lisibles)
+symboles = {0: "⚪", 1: "🔴", 2: "🟡"}
 for r in range(LIGNES):
-    cols = st.columns(COLONNES)
-    for c in range(COLONNES):
-        with cols[c]:
-            val = st.session_state.grille[r][c]
-            
-            if val == VIDE:
-                label = "⬛"
-            elif val == 1:
-                label = "🔴"
-            else:
-                label = "🟡"
-                
-            disabled = (val != VIDE) or st.session_state.partie_gagnee
-            
-            if st.button(label, key=f"cell_{r}_{c}", disabled=disabled, use_container_width=True):
-                if coup_valide(st.session_state.grille, c):
-                    jouer_coup(st.session_state.grille, c, JOUEUR)
-                    if verifier_victoire(st.session_state.grille, JOUEUR):
-                        st.session_state.partie_gagnee = True
-                    else:
-                        col_ia = trouver_meilleur_coup(st.session_state.grille, profondeur=5)
-                        if col_ia is not None:
-                            jouer_coup(st.session_state.grille, col_ia, IA)
-                            if verifier_victoire(st.session_state.grille, IA):
-                                st.session_state.partie_gagnee = True
-                    st.rerun()
+    ligne_str = "".join([symboles[st.session_state.grille[r][c]] for c in range(COLONNES)])
+    st.markdown(f"<div style='text-align: center; font-size: 34px; letter-spacing: 8px; line-height: 1.5;'>{ligne_str}</div>", unsafe_allow_html=True)
 
-if st.session_state.partie_gagnee:
+st.write("")
+
+if st.session_state.partie_terminee:
     if verifier_victoire(st.session_state.grille, JOUEUR):
         st.success("🎉 Incroyable, vous avez gagné !")
     elif verifier_victoire(st.session_state.grille, IA):
@@ -198,5 +182,5 @@ if st.session_state.partie_gagnee:
 st.write("")
 if st.button("🔄 Nouvelle Partie", use_container_width=True):
     st.session_state.grille = creer_grille()
-    st.session_state.partie_gagnee = False
+    st.session_state.partie_terminee = False
     st.rerun()
