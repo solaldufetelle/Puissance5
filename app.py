@@ -4,15 +4,18 @@ import copy
 
 st.set_page_config(page_title="Puissance 5", page_icon="🔴", layout="centered")
 
-# CSS pour forcer des cases carrées et régulières
+# CSS pour des cases carrées et des jetons bien grands qui remplissent toute la case
 st.markdown("""
     <style>
     div.stButton > button {
         aspect-ratio: 1 / 1 !important;
         width: 100% !important;
-        font-size: 20px !important;
+        font-size: 38px !important;
         padding: 0px !important;
-        border-radius: 6px !important;
+        border-radius: 8px !important;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -157,7 +160,7 @@ if 'grille' not in st.session_state:
 if 'partie_gagnee' not in st.session_state:
     st.session_state.partie_gagnee = False
 
-# Affichage de la grille en cases carrées uniformes
+# Affichage de la grille en cases carrées avec de grands jetons
 for r in range(LIGNES):
     cols = st.columns(COLONNES)
     for c in range(COLONNES):
@@ -165,7 +168,7 @@ for r in range(LIGNES):
             val = st.session_state.grille[r][c]
             
             if val == VIDE:
-                label = "▪️"
+                label = "⬛"
             elif val == 1:
                 label = "🔴"
             else:
@@ -194,4 +197,6 @@ if st.session_state.partie_gagnee:
 
 st.write("")
 if st.button("🔄 Nouvelle Partie", use_container_width=True):
-    st
+    st.session_state.grille = creer_grille()
+    st.session_state.partie_gagnee = False
+    st.rerun()
