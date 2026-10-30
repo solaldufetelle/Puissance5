@@ -120,4 +120,26 @@ def evaluer_fenetre(fenetre, jeton, ia_val, joueur_val):
 
     return score
 
-def evaluer_grille(grille, jeton,
+def evaluer_grille(grille, jeton, ia_val, joueur_val):
+    score = 0
+    centre_colonne = [grille[r][COLONNES // 2] for r in range(LIGNES)]
+    score += centre_colonne.count(jeton) * 20
+
+    for r in range(LIGNES):
+        for c in range(COLONNES - PUISSANCE + 1):
+            score += evaluer_fenetre(grille[r][c:c + PUISSANCE], jeton, ia_val, joueur_val)
+    for c in range(COLONNES):
+        colonne_arr = [grille[r][c] for r in range(LIGNES)]
+        for r in range(LIGNES - PUISSANCE + 1):
+            score += evaluer_fenetre(colonne_arr[r:r + PUISSANCE], jeton, ia_val, joueur_val)
+    for r in range(LIGNES - PUISSANCE + 1):
+        for c in range(COLONNES - PUISSANCE + 1):
+            score += evaluer_fenetre([grille[r + i][c + i] for i in range(PUISSANCE)], jeton, ia_val, joueur_val)
+    for r in range(PUISSANCE - 1, LIGNES):
+        for c in range(COLONNES - PUISSANCE + 1):
+            score += evaluer_fenetre([grille[r - i][c + i] for i in range(PUISSANCE)], jeton, ia_val, joueur_val)
+    return score
+
+def minimax(grille, profondeur, alpha, beta, joueur_max, ia_val, joueur_val):
+    coups_valides = obtenir_coups_valides(grille)
+    est_termine = verifier_victoire(grille, ia_val) or verifier_victoire(grille, joueur_val
