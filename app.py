@@ -3,7 +3,8 @@ import math
 import copy
 
 # Configuration de la page pour mobile
-st.set_page_title("Puissance 5 - Assistant IA", page_icon="🔴")
+st.set_page_config(page_title="Puissance 5 - Assistant IA", page_icon="🔴")
+
 
 # Configuration de la grille 9x7
 LIGNES = 7
