@@ -4,7 +4,7 @@ import copy
 
 st.set_page_config(page_title="Puissance 5 - Arena Expert", page_icon="🎯", layout="centered")
 
-# --- DESIGN CSS STYLE SOMBRE / GAMING AVEC CASES RONDES ---
+# --- DESIGN CSS STYLE SOMBRE / GAMING AVEC EFFET DERNIER COUP ---
 st.markdown("""
     <style>
     .stApp {
@@ -29,6 +29,11 @@ st.markdown("""
         background-color: #2e2e4f !important;
         border-color: #555580 !important;
     }
+    /* Style spécifique pour entourer / mettre en valeur le dernier coup de l'IA */
+    .ia-last-move {
+        border: 3px solid #00ffff !important;
+        box-shadow: 0 0 10px #00ffff !important;
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -51,6 +56,8 @@ if 'partie_terminee' not in st.session_state:
     st.session_state.partie_terminee = False
 if 'player_color' not in st.session_state:
     st.session_state.player_color = "🔴 Rouge"
+if 'last_ia_move' not in st.session_state:
+    st.session_state.last_ia_move = None  # Stocke (ligne, col) du dernier coup de l'IA
 
 def get_mapping():
     if st.session_state.player_color == "🔴 Rouge":
@@ -58,7 +65,7 @@ def get_mapping():
     else:
         return YELLOW_VAL, RED_VAL  # Joueur, IA
 
-# --- FONCTIONS DU MOTEUR & DOUBLE MENACE ---
+# --- FONCTIONS DU MOTEUR & STRATÉGIE AVANCÉE ---
 
 def creer_grille():
     return [[VIDE for _ in range(COLONNES)] for _ in range(LIGNES)]
@@ -97,29 +104,34 @@ def verifier_victoire(grille, jeton):
                 return True
     return False
 
-def compter_menaces_4(grille, jeton):
+def compter_menaces_avancees(grille, jeton):
+    """Détecte les menaces multiples et les configurations de doubles menaces (fourches)."""
     count = 0
+    # Horizontales
     for r in range(LIGNES):
         for c in range(COLONNES - PUISSANCE + 1):
             fenetre = grille[r][c:c + PUISSANCE]
-            if fenetre.count(jeton) == 4 and fenetre.count(VIDE) == 1:
-                count += 1
+            if fenetre.count(jeton) >= 3 and fenetre.count(VIDE) >= 1:
+                count += fenetre.count(jeton)
+    # Verticales
     for c in range(COLONNES):
         colonne_arr = [grille[r][c] for r in range(LIGNES)]
         for r in range(LIGNES - PUISSANCE + 1):
             fenetre = colonne_arr[r:r + PUISSANCE]
-            if fenetre.count(jeton) == 4 and fenetre.count(VIDE) == 1:
-                count += 1
+            if fenetre.count(jeton) >= 3 and fenetre.count(VIDE) >= 1:
+                count += fenetre.count(jeton)
+    # Diagonales montantes
     for r in range(LIGNES - PUISSANCE + 1):
         for c in range(COLONNES - PUISSANCE + 1):
             fenetre = [grille[r + i][c + i] for i in range(PUISSANCE)]
-            if fenetre.count(jeton) == 4 and fenetre.count(VIDE) == 1:
-                count += 1
+            if fenetre.count(jeton) >= 3 and fenetre.count(VIDE) >= 1:
+                count += fenetre.count(jeton)
+    # Diagonales descendantes
     for r in range(PUISSANCE - 1, LIGNES):
         for c in range(COLONNES - PUISSANCE + 1):
             fenetre = [grille[r - i][c + i] for i in range(PUISSANCE)]
-            if fenetre.count(jeton) == 4 and fenetre.count(VIDE) == 1:
-                count += 1
+            if fenetre.count(jeton) >= 3 and fenetre.count(VIDE) >= 1:
+                count += fenetre.count(jeton)
     return count
 
 def evaluer_fenetre(fenetre, jeton, ia_val, joueur_val):
@@ -130,25 +142,25 @@ def evaluer_fenetre(fenetre, jeton, ia_val, joueur_val):
     nb_adversaire = fenetre.count(adversaire)
 
     if nb_jeton == 5:
-        score += 1000000
+        score += 2000000
     elif nb_jeton == 4 and nb_vide == 1:
-        score += 50000
+        score += 100000
     elif nb_jeton == 3 and nb_vide == 2:
-        score += 500
+        score += 1000
     elif nb_jeton == 2 and nb_vide == 3:
-        score += 50
+        score += 100
 
     if nb_adversaire == 4 and nb_vide == 1:
-        score -= 45000
+        score -= 90000
     elif nb_adversaire == 3 and nb_vide == 2:
-        score -= 100
+        score -= 500
 
     return score
 
 def evaluer_grille(grille, jeton, ia_val, joueur_val):
     score = 0
     centre_colonne = [grille[r][COLONNES // 2] for r in range(LIGNES)]
-    score += centre_colonne.count(jeton) * 20
+    score += centre_colonne.count(jeton) * 30
 
     for r in range(LIGNES):
         for c in range(COLONNES - PUISSANCE + 1):
@@ -164,13 +176,12 @@ def evaluer_grille(grille, jeton, ia_val, joueur_val):
         for c in range(COLONNES - PUISSANCE + 1):
             score += evaluer_fenetre([grille[r - i][c + i] for i in range(PUISSANCE)], jeton, ia_val, joueur_val)
 
-    menaces_ia = compter_menaces_4(grille, ia_val)
-    menaces_adv = compter_menaces_4(grille, joueur_val)
+    # Bonus massif pour les doubles menaces et constructions croisées
+    menaces_ia = compter_menaces_avancees(grille, ia_val)
+    menaces_adv = compter_menaces_avancees(grille, joueur_val)
 
-    if menaces_ia >= 2:
-        score += 300000
-    if menaces_adv >= 2:
-        score -= 250000
+    score += menaces_ia * 5000
+    score -= menaces_adv * 4500
 
     return score
 
@@ -252,13 +263,15 @@ if not st.session_state.game_started:
         st.session_state.game_started = True
         st.session_state.grille = creer_grille()
         st.session_state.history = []
+        st.session_state.last_ia_move = None
         st.session_state.partie_terminee = False
         
         joueur_val, ia_val = get_mapping()
         
         if starting_choice == "L'IA":
             col_ia = COLONNES // 2
-            jouer_coup(st.session_state.grille, col_ia, ia_val)
+            r_ia = jouer_coup(st.session_state.grille, col_ia, ia_val)
+            st.session_state.last_ia_move = (r_ia, col_ia)
             
         st.rerun()
 
@@ -277,10 +290,10 @@ else:
     with col_stat3:
         st.markdown(f"<div style='text-align: center; background: #1e1e2f; padding: 8px; border-radius: 10px;'><b>IA Expert</b><br>{ia_color_icon}</div>", unsafe_allow_html=True)
 
-    st.markdown("<p style='text-align: center; color: #a0a0c0; font-size: 13px; margin-top: 8px;'>Touchez directement une colonne de la grille pour jouer !</p>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; color: #a0a0c0; font-size: 13px; margin-top: 8px;'>Touchez directement une colonne de la grille pour jouer ! Le dernier coup de l'IA est encadré en cyan.</p>", unsafe_allow_html=True)
     st.write("")
 
-    # Grille interactive cliquable directement par cellule/colonne
+    # Grille interactive cliquable
     for r in range(LIGNES):
         cols = st.columns(COLONNES)
         for c in range(COLONNES):
@@ -293,22 +306,33 @@ else:
                     label = "🔴"
                 else:
                     label = "🟡"
-                    
-                if st.button(label, key=f"cell_{r}_{c}", disabled=st.session_state.partie_terminee, use_container_width=True):
-                    if coup_valide(st.session_state.grille, c):
-                        st.session_state.history.append(copy.deepcopy(st.session_state.grille))
-                        
-                        jouer_coup(st.session_state.grille, c, joueur_val)
-                        
-                        if verifier_victoire(st.session_state.grille, joueur_val):
-                            st.session_state.partie_terminee = True
-                        else:
-                            col_ia = trouver_meilleur_coup(st.session_state.grille, profondeur=5)
-                            if col_ia is not None:
-                                jouer_coup(st.session_state.grille, col_ia, ia_val)
-                                if verifier_victoire(st.session_state.grille, ia_val):
-                                    st.session_state.partie_terminee = True
-                        st.rerun()
+                
+                # Vérifie si c'est le dernier coup de l'IA pour appliquer un style visuel distinct
+                is_last_ia = (st.session_state.last_ia_move == (r, c))
+                
+                if is_last_ia and val != VIDE:
+                    # Affichage distinctif pour le dernier coup de l'IA
+                    st.markdown(f"<div style='text-align: center; font-size: 26px; border: 3px solid #00ffff; border-radius: 50%; background: rgba(0,255,255,0.2); aspect-ratio: 1/1; display: flex; align-items: center; justify-content: center;'>{label}</div>", unsafe_allow_html=True)
+                else:
+                    if st.button(label, key=f"cell_{r}_{c}", disabled=st.session_state.partie_terminee, use_container_width=True):
+                        if coup_valide(st.session_state.grille, c):
+                            # Sauvegarde de l'historique (incluant l'ancien dernier coup IA)
+                            st.session_state.history.append((copy.deepcopy(st.session_state.grille), st.session_state.last_ia_move))
+                            
+                            # Coup du joueur
+                            jouer_coup(st.session_state.grille, c, joueur_val)
+                            
+                            if verifier_victoire(st.session_state.grille, joueur_val):
+                                st.session_state.partie_terminee = True
+                            else:
+                                # Tour de l'IA
+                                col_ia = trouver_meilleur_coup(st.session_state.grille, profondeur=5)
+                                if col_ia is not None:
+                                    r_ia = jouer_coup(st.session_state.grille, col_ia, ia_val)
+                                    st.session_state.last_ia_move = (r_ia, col_ia)
+                                    if verifier_victoire(st.session_state.grille, ia_val):
+                                        st.session_state.partie_terminee = True
+                            st.rerun()
 
     st.write("")
 
@@ -324,7 +348,9 @@ else:
     with col_btn1:
         if st.button("↩️ Annuler le coup", use_container_width=True, disabled=len(st.session_state.history) == 0):
             if st.session_state.history:
-                st.session_state.grille = st.session_state.history.pop()
+                prev_grille, prev_last_ia = st.session_state.history.pop()
+                st.session_state.grille = prev_grille
+                st.session_state.last_ia_move = prev_last_ia
                 st.session_state.partie_terminee = False
                 st.rerun()
     with col_btn2:
@@ -332,4 +358,5 @@ else:
             st.session_state.game_started = False
             st.session_state.partie_terminee = False
             st.session_state.history = []
+            st.session_state.last_ia_move = None
             st.rerun()
