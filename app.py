@@ -17,7 +17,7 @@ st.markdown("""
         border: 1px solid #2d2d44 !important;
         aspect-ratio: 1 / 1 !important;
         width: 100% !important;
-        font-size: 44px !important;  /* Tous les pions en très grand format */
+        font-size: 44px !important;
         line-height: 1 !important;
         padding: 0px !important;
         border-radius: 50% !important;
@@ -57,9 +57,9 @@ if 'last_ia_move' not in st.session_state:
 
 def get_mapping():
     if st.session_state.player_color == "🔴 Rouge":
-        return RED_VAL, YELLOW_VAL  # Joueur, IA
+        return RED_VAL, YELLOW_VAL
     else:
-        return YELLOW_VAL, RED_VAL  # Joueur, IA
+        return YELLOW_VAL, RED_VAL
 
 def creer_grille():
     return [[VIDE for _ in range(COLONNES)] for _ in range(LIGNES)]
@@ -80,5 +80,60 @@ def jouer_coup(grille, col, jeton):
     return -1
 
 def verifier_victoire(grille, jeton):
+    lim_col = COLONNES - PUISSANCE + 1
+    lim_lig = LIGNES - PUISSANCE + 1
+    
+    # Horizontales
     for r in range(LIGNES):
-        for c in range(COLON
+        for c in range(lim_col):
+            if all(grille[r][c + i] == jeton for i in range(PUISSANCE)):
+                return True
+    # Verticales
+    for r in range(lim_lig):
+        for c in range(COLONNES):
+            if all(grille[r + i][c] == jeton for i in range(PUISSANCE)):
+                return True
+    # Diagonales descendantes
+    for r in range(lim_lig):
+        for c in range(lim_col):
+            if all(grille[r + i][c + i] == jeton for i in range(PUISSANCE)):
+                return True
+    # Diagonales montantes
+    for r in range(PUISSANCE - 1, LIGNES):
+        for c in range(lim_col):
+            if all(grille[r - i][c + i] == jeton for i in range(PUISSANCE)):
+                return True
+    return False
+
+def compter_menaces_avancees(grille, jeton):
+    lim_col = COLONNES - PUISSANCE + 1
+    lim_lig = LIGNES - PUISSANCE + 1
+    count = 0
+    
+    for r in range(LIGNES):
+        for c in range(lim_col):
+            fen = grille[r][c:c + PUISSANCE]
+            if fen.count(jeton) >= 3 and fen.count(VIDE) >= 1:
+                count += fen.count(jeton)
+    for c in range(COLONNES):
+        col_arr = [grille[r][c] for r in range(LIGNES)]
+        for r in range(lim_lig):
+            fen = col_arr[r:r + PUISSANCE]
+            if fen.count(jeton) >= 3 and fen.count(VIDE) >= 1:
+                count += fen.count(jeton)
+    for r in range(lim_lig):
+        for c in range(lim_col):
+            fen = [grille[r + i][c + i] for i in range(PUISSANCE)]
+            if fen.count(jeton) >= 3 and fen.count(VIDE) >= 1:
+                count += fen.count(jeton)
+    for r in range(PUISSANCE - 1, LIGNES):
+        for c in range(lim_col):
+            fen = [grille[r - i][c + i] for i in range(PUISSANCE)]
+            if fen.count(jeton) >= 3 and fen.count(VIDE) >= 1:
+                count += fen.count(jeton)
+    return count
+
+def evaluer_fenetre(fenetre, jeton, ia_val, joueur_val):
+    score = 0
+    nb_jeton = fenetre.count(jeton)
+    nb_vide =
